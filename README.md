@@ -1,6 +1,6 @@
 # Kaspa Odyssey
 
-Real-time generative art driven by the Kaspa blockchain network health state.
+Real-time generative art driven by the Kaspa blockDAG network health state.
 
 Every particle, pulse, and whisper is the network breathing in real time. Not a dashboard — a decentralized organism visualized as atmospheric cinematic art.
 
