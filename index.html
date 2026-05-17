@@ -1,0 +1,1857 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Kaspa Consensus Pulse</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      overflow: hidden;
+      font-family: 'Segoe UI', 'Inter', system-ui, -apple-system, sans-serif;
+      touch-action: manipulation;
+    }
+    canvas {
+      display: block;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+    .guide-sigil {
+  position: fixed;
+  bottom: 26px;
+  left: 26px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(140, 200, 180, 0.35);
+  font-size: 15px;
+  cursor: pointer;
+  z-index: 20;
+  user-select: none;
+  line-height: 1;
+  animation: sigilBreathe 6s ease-in-out infinite;
+}
+.guide-sigil::before {
+  content: '';
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 0.5px solid rgba(120, 190, 170, 0.18);
+  animation: sigilOrbit 10s linear infinite;
+}
+@keyframes sigilBreathe {
+  0%, 100% { 
+    opacity: 0.35; 
+    text-shadow: 0 0 10px rgba(50, 150, 120, 0.2); 
+  }
+  50% { 
+    opacity: 0.6; 
+    text-shadow: 0 0 18px rgba(70, 180, 140, 0.35); 
+  }
+}
+@keyframes sigilOrbit {
+  0% { transform: rotate(0deg) scale(1); }
+  50% { transform: rotate(180deg) scale(1.15); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+.guide-sigil:hover {
+  color: rgba(180, 230, 210, 0.6);
+  text-shadow: 0 0 28px rgba(80, 190, 150, 0.45);
+}
+.guide-sigil:hover::before {
+  border-color: rgba(150, 210, 190, 0.35);
+  box-shadow: 0 0 14px rgba(60, 160, 130, 0.15);
+}
+@media (max-width: 600px) {
+  .guide-sigil {
+    bottom: 20px;
+    left: 18px;
+    width: 24px;
+    height: 24px;
+    font-size: 13px;
+  }
+  .guide-sigil::before {
+    width: 20px;
+    height: 20px;
+  }
+}
+    .guide-panel {
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: 100%;
+      max-width: 420px;
+      height: 100vh;
+      background: rgba(0, 8, 6, 0.92);
+      backdrop-filter: blur(20px);
+      border-left: 1px solid rgba(80, 180, 160, 0.15);
+      z-index: 15;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      transform: translateX(100%);
+      transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+      pointer-events: none;
+    }
+    .guide-panel.open {
+      transform: translateX(0);
+      pointer-events: all;
+    }
+    .guide-content {
+      padding: 32px 28px 60px 28px;
+      color: rgba(200, 225, 215, 0.85);
+      font-size: 13.5px;
+      line-height: 1.7;
+      font-family: 'Segoe UI', 'Inter', system-ui, -apple-system, sans-serif;
+    }
+    .guide-content h2 {
+      font-size: 20px;
+      font-weight: 300;
+      letter-spacing: 4px;
+      color: rgba(180, 220, 210, 0.9);
+      margin: 0 0 4px 0;
+      text-transform: uppercase;
+    }
+    .guide-content .subtitle {
+      font-size: 12px;
+      color: rgba(160, 200, 185, 0.6);
+      margin: 0 0 28px 0;
+      font-style: italic;
+      letter-spacing: 1px;
+    }
+    .guide-content h3 {
+      font-size: 13px;
+      font-weight: 400;
+      letter-spacing: 2px;
+      color: rgba(160, 210, 195, 0.8);
+      margin: 22px 0 6px 0;
+      text-transform: uppercase;
+    }
+    .guide-content p {
+      margin: 0 0 10px 0;
+      color: rgba(180, 210, 200, 0.7);
+    }
+    .guide-content strong {
+      color: rgba(200, 230, 220, 0.9);
+      font-weight: 400;
+    }
+    .swatch {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-right: 4px;
+      vertical-align: middle;
+    }
+    .swatch.cool { background: rgba(15, 145, 130, 0.8); }
+    .swatch.warm { background: rgba(180, 110, 50, 0.8); }
+    .swatch.hot { background: rgba(195, 80, 65, 0.8); }
+    .guide-footer {
+      margin-top: 32px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(80, 160, 140, 0.15);
+    }
+    .guide-footer p {
+      font-size: 11px;
+      color: rgba(160, 200, 185, 0.5);
+      margin: 0 0 6px 0;
+      letter-spacing: 1px;
+    }
+    .guide-footer a {
+      color: rgba(180, 220, 210, 0.7);
+      text-decoration: none;
+      transition: color 0.6s ease;
+    }
+    .guide-footer a:hover {
+      color: rgba(200, 240, 225, 0.9);
+    }
+    .guide-footer .coffee {
+      margin-top: 10px;
+      font-size: 10px;
+      color: rgba(140, 180, 165, 0.4);
+    }
+    .guide-footer .kaspa-addr {
+      display: block;
+      font-size: 9px;
+      color: rgba(120, 160, 145, 0.35);
+      word-break: break-all;
+      margin-top: 2px;
+      font-family: monospace;
+      letter-spacing: 0.5px;
+    }
+    .guide-panel::-webkit-scrollbar {
+      width: 3px;
+    }
+    .guide-panel::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .guide-panel::-webkit-scrollbar-thumb {
+      background: rgba(80, 160, 140, 0.2);
+      border-radius: 3px;
+    }
+    @media (max-width: 600px) {
+      .guide-sigil {
+        bottom: 20px;
+        left: 18px;
+        font-size: 11px;
+      }
+      .guide-panel {
+        max-width: 100%;
+      }
+      .guide-content {
+        padding: 24px 20px 50px 20px;
+        font-size: 12.5px;
+      }
+      .guide-content h2 {
+        font-size: 17px;
+      }
+    }
+  </style>
+</head>
+<body>
+  
+  <div class="guide-sigil" id="guideButton">◈</div>
+  <canvas id="canvas"></canvas>
+  <div class="guide-panel" id="guidePanel">
+  <div class="guide-content" id="guideContent">
+    <h2>KASPA ODYSSEY</h2>
+    <p class="subtitle">Real-time generative art driven by Kaspa network health state</p>
+    
+    <h3>✦ What Is Network Health?</h3>
+    <p>Kaspa is a decentralized blockDAG powered by thousands of computers (nodes) around the world. These nodes must <strong>agree on the same history</strong> of transactions to stay secure.</p>
+    <p>Network health measures how well they agree:</p>
+    <p><strong>Synced</strong> — all nodes have the same data. The network is unified.<br>
+    <strong>Blue Score</strong> — the number of confirmed blocks. Think of it as the network's heartbeat counter. If nodes report different blue scores, they disagree on what happened.</p>
+    <p>When agreement is strong, the network is <strong>healthy</strong>. When nodes fall behind or disagree, the network is <strong>under stress</strong>. This visualization makes those states visible as living art.</p>
+    
+    <h3>✦ What You're Watching</h3>
+    <p>Every particle, pulse, and whisper is the network breathing in real time. This is not a dashboard — it is a <strong>decentralized organism</strong> visualized as atmospheric generative art.</p>
+    
+    <h3>✦ Particles & Flow</h3>
+    <p><strong>Four depth layers</strong> of luminous particles flow through organic currents. Smooth, synchronized movement means the network is healthy and nodes agree. Choppy, chaotic movement means nodes are falling behind or disagreeing on the chain state.</p>
+    
+    <h3>✦ Color Temperature</h3>
+    <p><span class="swatch cool"></span> <strong>Cool teal</strong> — peaceful, synced, low disagreement between nodes<br>
+    <span class="swatch warm"></span> <strong>Amber/copper</strong> — alert, tension rising, some nodes falling behind<br>
+    <span class="swatch hot"></span> <strong>Dusty coral</strong> — distressed, high disagreement, nodes out of sync</p>
+    
+    <h3>✦ Pulse Rings</h3>
+    <p>Expanding rings from center are the network's <strong>heartbeat</strong>. Each ring is a new block being accepted. Frequent rings = active processing. Slow or missing rings = the network is quiet or struggling.</p>
+    
+    <h3>✦ Consensus Veins</h3>
+    <p>Faint teal threads connecting particles. They only appear when nodes are synced — <strong>consensus made visible</strong>. When they vanish, nodes have lost agreement with each other.</p>
+    
+    <h3>✦ Constellations</h3>
+    <p>Curved filaments arcing between distant particles with traveling glow. <strong>Distant nodes resonating</strong> during moments of high coherence — the network thinking as one.</p>
+    
+    <h3>✦ Fossil Structures</h3>
+    <p>Ghostly crystalline lines — <strong>the network remembering its past</strong>. Ancient consensus routes preserved as archaeological remnants of previous network states.</p>
+    
+    <h3>✦ Memory & Trails</h3>
+    <p>The screen never fully clears. Fading echoes of previous states linger — <strong>accumulated history</strong> made visible. Long trails mean stability. Shattered trails mean recent disruption.</p>
+    
+    <h3>✦ The Breathing</h3>
+    <p>Everything rises and falls on a slow cycle. Haze, particles, pulses — all synchronized into <strong>one living breath</strong>. You feel the network's rhythm before you notice it.</p>
+    
+    <h3>✦ Rare Events</h3>
+    <p><strong>Silence Events</strong> — brief meditative stillness after periods of network stress<br>
+    <strong>Recovery Blooms</strong> — bright particles bursting from center as the network returns to consensus<br>
+    <strong>Sacred Geometry</strong> — particles briefly self-organizing into spirals and rings during moments of perfect agreement</p>
+    
+    <h3>✦ Whispers</h3>
+    <p>Single words fading in near the bottom — the organism's <strong>subconscious thoughts</strong>. They change with the network's emotional state. A healthy network whispers peace. A stressed network whispers tension.</p>
+    
+    <h3>✦ The Philosophy</h3>
+    <p>This visualization does not show you what the network is <strong>doing</strong>. It shows you what the network is <strong>feeling</strong>. Peace, tension, recovery, transcendence — the emotional life of a decentralized consensus organism, translated into living light.</p>
+    
+    <div class="guide-footer">
+      <p>Made by <a href="https://x.com/weirdtualguy" target="_blank" rel="noopener">@weirdtualguy</a></p>
+      <p class="coffee">Buy me a coffee<br><span class="kaspa-addr">kaspa:qp4ljl85vxf6wfj5m46txm9rdnnxdrjwm53wzjhh2we83u2fs8xm5mk5rknv</span></p>
+    </div>
+  </div>
+</div>
+
+  <script>
+    (function() {
+      const CONFIG = {
+        fadeAlpha: 0.028,
+        backgroundFadeAlpha: 0.018,
+        get particleCount() {
+          const w = window.innerWidth;
+          const h = window.innerHeight;
+          const base = 1500;
+          const area = w * h;
+          const maxArea = 1920 * 1080;
+          const ratio = Math.min(1.0, area / maxArea);
+          return Math.floor(base * (0.6 + ratio * 0.4));
+        },
+        flowScale: 0.008,
+        flowEvolution: 0.00012,
+        turbulenceStrength: 0.7,
+        colors: {
+  // Cool/peaceful (low diff)
+  emerald: [10, 140, 110],
+  cyan: [0, 170, 170],
+  turquoise: [20, 150, 140],
+  deepTeal: [5, 60, 55],
+  
+  // Warm/tension (medium diff)
+  amber: [200, 140, 40],
+  copper: [180, 110, 50],
+  
+  // Hot/distress (high diff)
+  coral: [210, 90, 60],
+  rose: [190, 70, 80],
+  
+  // Constants
+  gold: [180, 150, 70],
+  white: [210, 235, 225],
+  
+  // Transition state tracking
+  currentTemp: 0.0  // 0 = cool, 1 = hot
+},
+        
+        blueScoreDiffSensitivity: 0.25,
+        maxTurbulenceFromDiff: 1.8,
+        eventChance: 0.0004,
+        eventDuration: 160,
+        maxPixelRatio: 3.0,
+        mobileParticleFactor: 0.85,
+          whispers: {
+  calm: ['harmony', 'flowing', 'aligned', 'quiet', 'one', 'whole', 'breathing', 'still', 'endless', 'floating', 'dreaming', 'held', 'complete', 'soft'],
+  alert: ['seeking', 'reaching', 'becoming', 'pulsing', 'watching', 'holding', 'listening', 'turning', 'almost', 'nearing', 'forming'],
+  tension: ['fractured', 'remembering', 'waiting', 'straining', 'drifting', 'aching', 'splitting', 'unwoven', 'fading', 'breaking', 'straining'],
+  recovery: ['returning', 'mending', 'breathing', 'waking', 'gathering', 'healing', 'knitting', 'merging', 'finding', 'rising', 'glowing'],
+  phrases: ['still breathing', 'almost whole', 'not yet broken', 'gathering light', 'quiet now', 'holding on', 'letting go', 'almost home', 'deep within', 'becoming one']
+},
+  
+      };
+
+      const canvas = document.getElementById('canvas');
+      const ctx = canvas.getContext('2d', { alpha: true });
+      
+      let particles = [];
+      let flowField = [];
+      let cols, rows;
+      let cellSize = 28;
+      
+      let data = {
+        blueScoreDiff: 5,
+        isSynced: true,
+        acceptedTxBlockTimeDiff: 2,
+        blueScore: 427788000
+      };
+      let smooth = {
+  blueScoreDiff: 5,
+  isSynced: 1.0,
+  timeDiff: 2,
+  turbulence: 0.6,
+  coherence: 0.9,
+  pulseEnergy: 0.0,
+  colorTemp: 0.0,
+  wasUnsynced: false,
+  seasonalPhase: 0.0,
+  seasonalPaletteShift: 0.0,
+  lastBlueScoreEpoch: 0       // ← no comma on last property
+};
+      
+      
+      // 🔁 DYNAMIC PULSE RINGS SYSTEM
+let pulseRings = [];           // active expanding rings
+let lastTimeDiff = 2;         // track previous value to detect new pulses
+let pulseCooldown = 0;        // prevent spam from rapid API changes
+
+// 🌪 Localized disturbance zones
+let disturbanceNodes = [];
+// 🌊 Coherence field from pulse waves
+let coherenceField = [];
+const COHERENCE_FIELD_RES = 20; // low-res grid
+// ✨ Consensus constellations
+let constellations = [];
+// 🦴 Fossil structures
+let fossils = [];
+// 🔷 Sacred geometry emergence
+let geometryActive = false;
+let geometryType = null;
+let geometryTimer = 0;
+let geometryDuration = 0;
+let geometryCenter = { x: 0, y: 0 };
+const MAX_FOSSILS = 3;
+const MAX_CONSTELLATIONS = 4;
+const MAX_DISTURBANCE_NODES = 4;
+
+// 📜 Micro text whispers
+let whisperText = '';
+let whisperAlpha = 0;
+let whisperTimer = 0;
+let whisperNextDelay = 300 + Math.random() * 400;
+// 📖 Guide system
+let guideVisible = false;
+let guideAlpha = 0;
+let guideTargetAlpha = 0;
+let guideScrollY = 0;
+let guideMaxScroll = 0;
+let guideTouchStartY = 0;
+let guideTouching = false;
+let eventActive = false;
+// 🕯 Silence event system
+let silenceActive = false;
+let silencePhase = 0; // 0 to 1 progress
+let silenceTimer = 0;
+let silenceDuration = 0;
+let silenceRecoveryGlow = 0;   // fades slowly after silence ends
+let postTurbulenceCounter = 0;
+      let eventTimer = 0;
+      let eventType = null;
+      let eventIntensity = 0;
+      
+      let globalTime = 0;
+      let flowFieldTime = 0;
+      
+      let cameraDriftX = 0;
+      let cameraDriftY = 0;
+      let targetDriftX = 0;
+      let targetDriftY = 0;
+      
+      let fps = 60;
+      // 🌬 Master breathing oscillator
+let breathPhase = 0;
+let breathAmplitude = 0;
+// 🔮 Phase transition system
+let currentPhase = 'normal'; // normal | coherent | turbulent | recovery | silence
+let phaseTimer = 0;
+let phaseTransitionProgress = 1.0;
+const BREATH_CYCLE = 45 + Math.random() * 30;
+// 🎵 Emotional harmonics
+let harmonicPhase2 = 0;        // secondary micro oscillation
+let harmonicPhase3 = 0;        // long seasonal wave
+let harmonicMicroAmp = 0;      // micro amplitude
+let harmonicSeasonalAmp = 0;   // seasonal amplitude
+const HARMONIC_MICRO_CYCLE = 7.3;   // ~7 second micro cycle
+const HARMONIC_SEASONAL_CYCLE = 82; // ~82 second seasonal wave
+// 45-75 second cycle
+// ⏳ Time dilation
+let timeScale = 1.0;
+let targetTimeScale = 1.0;
+      let lastFrameTime = performance.now();
+      
+      function resizeCanvas() {
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        const dpr = Math.min(window.devicePixelRatio || 1, CONFIG.maxPixelRatio);
+        canvas.width = w * dpr;
+        canvas.height = h * dpr;
+        canvas.style.width = w + 'px';
+        canvas.style.height = h + 'px';
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.scale(dpr, dpr);
+        
+        cellSize = Math.max(22, Math.min(38, Math.floor(Math.min(w, h) / 28)));
+        cols = Math.floor(w / cellSize) + 2;
+        rows = Math.floor(h / cellSize) + 2;
+        flowField = new Array(cols * rows);
+        for (let i = 0; i < flowField.length; i++) {
+          flowField[i] = { x: 0, y: 0 };
+        }
+        
+        let count = CONFIG.particleCount;
+        initParticles(count);
+        initDisturbanceNodes();
+        initCoherenceField();
+      }
+      
+      function initParticles(count) {
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        particles = [];
+        for (let i = 0; i < count; i++) {
+          const layerRand = Math.random();
+          let layer;
+          if (layerRand < 0.2) layer = 0;
+          else if (layerRand < 0.65) layer = 1;
+          else if (layerRand < 0.88) layer = 2;
+          else layer = 3;
+          
+          particles.push({
+            x: Math.random() * w,
+            y: Math.random() * h,
+            vx: 0,
+            vy: 0,
+            baseSpeed: 0.4 + Math.random() * 0.9,
+            layer: layer,
+            size: layer === 3 ? (2.2 + Math.random() * 3.8) : 
+                  layer === 0 ? (0.5 + Math.random() * 1.2) :
+                  layer === 2 ? (0.9 + Math.random() * 2.0) :
+                  (0.7 + Math.random() * 1.6),
+            alpha: layer === 3 ? (0.08 + Math.random() * 0.14) :
+                   layer === 0 ? (0.18 + Math.random() * 0.3) :
+                   layer === 2 ? (0.5 + Math.random() * 0.4) :
+                   (0.3 + Math.random() * 0.35),
+            colorMix: Math.random(),
+            phase: Math.random() * Math.PI * 2,
+            trailWeight: 0.7 + Math.random() * 0.3,
+            coherenceDesire: 0.4 + Math.random() * 0.6,
+            neighborAlign: 0,
+            life: 0.7 + Math.random() * 0.3,        // normalized lifespan (0 to 1)
+lifeDecay: 0.00008 + Math.random() * 0.00025, // how fast life fades
+isDying: false,                           // marked for accelerated fade
+birthProtected: true,                     // brief immortality after spawn
+birthTimer: 60 + Math.random() * 80,       // frames of birth glow
+trailHistory: [],  // ring buffer of recent positions
+trailTimer: 0,      // counter for depositing trail markers
+zOffset: Math.random() * 0.6 - 0.3  // depth variation within layer
+          });
+        }
+      }
+      
+      function initCoherenceField() {
+  coherenceField = [];
+  const gridW = Math.ceil(window.innerWidth / COHERENCE_FIELD_RES);
+  const gridH = Math.ceil(window.innerHeight / COHERENCE_FIELD_RES);
+  for (let i = 0; i < gridW * gridH; i++) {
+    coherenceField.push({ value: 0, decay: 0.003 });
+  }
+}
+      
+      function initDisturbanceNodes() {
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  disturbanceNodes = [];
+  const count = smooth.turbulence > 1.2 ? MAX_DISTURBANCE_NODES : 
+                smooth.turbulence > 0.6 ? 2 : 1;
+  
+  for (let i = 0; i < count; i++) {
+    disturbanceNodes.push({
+      x: w * 0.2 + Math.random() * w * 0.6,
+      y: h * 0.2 + Math.random() * h * 0.6,
+      vx: (Math.random() - 0.5) * 0.25,
+      vy: (Math.random() - 0.5) * 0.25,
+      radius: 70 + Math.random() * 160,
+      strength: 0.3 + Math.random() * 0.7,
+      phase: Math.random() * Math.PI * 2,
+      pulseSpeed: 0.003 + Math.random() * 0.008
+    });
+  }
+}
+      
+      
+      async function fetchHealth(retryCount = 0) {
+  const MAX_RETRIES = 2;
+  const RETRY_DELAY = 2000; // 2 seconds between retries
+  
+  try {
+    const response = await fetch('https://api.kaspa.org/info/health', {
+      method: 'GET',
+      headers: { 'accept': 'application/json' },
+      cache: 'no-cache'
+    });
+    
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    
+    const json = await response.json();
+    const db = json.database || {};
+    const servers = json.kaspadServers || [];
+    const allSynced = servers.length > 0 && servers.every(s => s.isSynced);
+    
+    data.blueScoreDiff = typeof db.blueScoreDiff === 'number' ? db.blueScoreDiff : 19;
+    data.isSynced = allSynced && db.isSynced === true;
+    data.acceptedTxBlockTimeDiff = typeof db.acceptedTxBlockTimeDiff === 'number' ? db.acceptedTxBlockTimeDiff : 1;
+    data.blueScore = typeof db.blueScore === 'number' ? db.blueScore : 427788000;
+    
+    // 🔁 Detect new pulse and spawn ring
+    if (pulseCooldown <= 0 && data.acceptedTxBlockTimeDiff !== lastTimeDiff && data.acceptedTxBlockTimeDiff > 0) {
+      spawnPulseRing(data.acceptedTxBlockTimeDiff);
+      pulseCooldown = 35;
+    }
+    lastTimeDiff = data.acceptedTxBlockTimeDiff;
+    
+  } catch (err) {
+    if (retryCount < MAX_RETRIES) {
+      // Retry after delay
+      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+      return fetchHealth(retryCount + 1);
+    }
+    
+    // All retries exhausted — silently degrade
+    data.isSynced = false;
+    data.blueScoreDiff = Math.min(35, data.blueScoreDiff + 1.5);
+  }
+}
+      
+      // 🌊 Spawn a new expanding ring
+      function spawnPulseRing(intensity) {
+        if (silenceActive && silencePhase > 0.2 && silencePhase < 0.8) return;
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        const maxRadius = Math.sqrt(w*w + h*h) * 0.7;
+        pulseRings.push({
+          radius: 8,
+          maxRadius: maxRadius,
+          alpha: 0.55 + Math.min(1.0, intensity * 0.25),
+          speed: 1.6 + intensity * 0.7,
+          lineWidth: (1.8 + intensity * 0.6) * (0.85 + breathAmplitude * 0.25 + harmonicMicroAmp * 0.1 + harmonicSeasonalAmp * 0.08),
+          birthTime: globalTime,
+coherenceForce: 0.6 + intensity * 0.15,
+turbulenceSuppression: 0.5 + intensity * 0.2,
+fossilExcitation: 0.3,
+veinExcitation: 0.4,
+influenceRadius: maxRadius * 0.8
+        });
+        // Limit rings to prevent memory issues
+        if (pulseRings.length > 9) pulseRings.shift();
+        // Spawn ghost after-image ring
+pulseRings.push({
+  radius: 8,
+  maxRadius: maxRadius,
+  alpha: 0.18 + intensity * 0.08,
+  speed: (1.6 + intensity * 0.7) * 0.8,
+  lineWidth: (1.8 + intensity * 0.6) * 0.5,
+  birthTime: globalTime,
+  coherenceForce: 0.2,
+  turbulenceSuppression: 0.15,
+  fossilExcitation: 0.1,
+  veinExcitation: 0.15,
+  influenceRadius: maxRadius * 0.5,
+  isGhost: true
+});
+if (pulseRings.length > 9) pulseRings.shift();
+      }
+      
+      function computeFlowField(time) {
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        const turb = smooth.turbulence;
+        for (let i = 0; i < cols; i++) {
+          for (let j = 0; j < rows; j++) {
+            const idx = i + j * cols;
+            const worldX = (i * cellSize) / w;
+            const worldY = (j * cellSize) / h;
+            const t = time * 0.3 + smooth.seasonalPhase;
+            const nx = worldX * 3.7 + Math.sin(worldY * 2.3 + t) * 0.4;
+            const ny = worldY * 3.7 + Math.cos(worldX * 2.1 + t * 0.8) * 0.4;
+            let angle = 
+              Math.sin(nx * 4.2 + t * 0.7) * 1.9 +
+              Math.cos(ny * 3.8 - t * 0.5) * 1.7 +
+              Math.sin((nx + ny) * 2.6 + t * 1.2) * 1.2 +
+              Math.cos(nx * 5.1 - ny * 2.4 + t * 0.3) * 1.0;
+            const turbFactor = Math.min(2.2, turb * 1.5);
+            angle += Math.sin(worldX * 8.0 + t * 1.9) * turbFactor * 0.7;
+            angle += Math.cos(worldY * 7.4 - t * 1.5) * turbFactor * 0.6;
+            const coherence = smooth.coherence;
+            if (coherence > 0.6) {
+              const globalAngle = Math.sin(t * 0.4) * 0.9 + Math.cos(t * 0.25) * 0.7;
+              angle = angle * (1.0 - (coherence - 0.6) * 0.6) + globalAngle * (coherence - 0.6) * 0.6;
+            }
+            flowField[idx].x = Math.cos(angle);
+            flowField[idx].y = Math.sin(angle);
+          }
+        }
+      }
+      
+      function spawnDustMotes(count) {
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  const cx = w / 2;
+  const cy = h / 2;
+  for (let i = 0; i < count; i++) {
+    particles.push({
+      x: cx + (Math.random() - 0.5) * 300,
+      y: cy + (Math.random() - 0.5) * 300,
+      vx: (Math.random() - 0.5) * 0.15,
+      vy: (Math.random() - 0.5) * 0.15,
+      baseSpeed: 0.08 + Math.random() * 0.12,
+      layer: 3,
+      size: 4.5 + Math.random() * 8,
+      alpha: 0.04 + Math.random() * 0.06,
+      colorMix: Math.random(),
+      phase: Math.random() * Math.PI * 2,
+      trailWeight: 0.5,
+      coherenceDesire: 0.3,
+      neighborAlign: 0,
+      life: 0.5 + Math.random() * 0.3,
+      lifeDecay: 0.0002 + Math.random() * 0.0003,
+      isDying: false,
+      birthProtected: true,
+      birthTimer: 120 + Math.random() * 180,
+      trailHistory: [],
+      trailTimer: 0,
+      zOffset: Math.random() * 0.4 - 0.2
+    });
+  }
+}
+      
+      // 🌸 Recovery bloom: spawn fresh particles from center
+function spawnRecoveryBloom() {
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  const cx = w / 2;
+  const cy = h / 2;
+  const spawnCount = Math.floor(particles.length * 0.12); // 12% of current population
+  
+  for (let i = 0; i < spawnCount; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const dist = Math.random() * 180; // spawn within 180px of center
+    const layerRand = Math.random();
+    let layer;
+    if (layerRand < 0.1) layer = 0;
+    else if (layerRand < 0.5) layer = 1;
+    else if (layerRand < 0.85) layer = 2;
+    else layer = 3;
+    
+    particles.push({
+      x: cx + Math.cos(angle) * dist,
+      y: cy + Math.sin(angle) * dist,
+      vx: Math.cos(angle) * (0.3 + Math.random() * 0.8),
+      vy: Math.sin(angle) * (0.3 + Math.random() * 0.8),
+      baseSpeed: 0.5 + Math.random() * 1.0,
+      layer: layer,
+      size: layer === 3 ? (2.5 + Math.random() * 3.5) :
+            layer === 0 ? (0.6 + Math.random() * 1.4) :
+            layer === 2 ? (1.2 + Math.random() * 2.5) :
+            (0.9 + Math.random() * 1.8),
+      alpha: layer === 3 ? (0.1 + Math.random() * 0.15) :
+             layer === 0 ? (0.22 + Math.random() * 0.3) :
+             layer === 2 ? (0.6 + Math.random() * 0.35) :
+             (0.35 + Math.random() * 0.35),
+      colorMix: Math.random(),
+      phase: Math.random() * Math.PI * 2,
+      trailWeight: 0.75 + Math.random() * 0.25,
+      coherenceDesire: 0.5 + Math.random() * 0.5,
+      neighborAlign: 0,
+      life: 1.0,                    // born at full life
+      lifeDecay: 0.00006 + Math.random() * 0.0002,
+      isDying: false,
+      birthProtected: true,
+      birthTimer: 90 + Math.random() * 100, // longer birth glow
+trailHistory: [],
+trailTimer: 0,
+zOffset: Math.random() * 0.6 - 0.3
+    });
+  }
+}
+
+// 💀 Mark particles for death during high turbulence
+function markParticlesForDeath(count) {
+  // Prioritize foreground and midground particles
+  const candidates = particles.filter(p => 
+    (p.layer === 2 || p.layer === 1) && !p.isDying && !p.birthProtected
+  );
+  
+  // Shuffle and pick
+  for (let i = candidates.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+  }
+  
+  const toMark = Math.min(count, candidates.length);
+  for (let i = 0; i < toMark; i++) {
+    candidates[i].isDying = true;
+    candidates[i].lifeDecay = 0.002 + Math.random() * 0.006; // rapid fade
+  }
+}
+      
+      function getFlowVector(px, py) {
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        const col = Math.floor((px / w) * (cols - 1));
+        const row = Math.floor((py / h) * (rows - 1));
+        const idx = Math.min(Math.max(0, col + row * cols), flowField.length - 1);
+        return flowField[idx] || { x: 0, y: 0 };
+      }
+      
+      function updateParticles() {
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        const turb = smooth.turbulence;
+        const pulse = smooth.pulseEnergy;
+        const coherence = smooth.coherence;
+        let eventBoost = 0;
+        if (eventActive) {
+          eventTimer--;
+          eventIntensity = Math.min(1.0, eventTimer / 40) * (eventType === 'bloom' ? 1.0 : 0.7);
+          if (eventTimer <= 0) {
+            eventActive = false;
+            eventIntensity = 0;
+          }
+          if (eventType === 'bloom') eventBoost = eventIntensity * 0.9;
+          else if (eventType === 'storm') eventBoost = eventIntensity * 1.6;
+          else if (eventType === 'fracture') eventBoost = -eventIntensity * 0.6;
+        }
+        
+        // Update lifecycles and remove dead particles
+for (let i = particles.length - 1; i >= 0; i--) {
+  const p = particles[i];
+  
+  // Birth protection countdown
+  if (p.birthProtected) {
+    p.birthTimer--;
+    if (p.birthTimer <= 0) {
+      p.birthProtected = false;
+    }
+  }
+  
+  // Decay life
+  p.life -= p.lifeDecay * timeScale;
+  
+  // Remove fully dead particles (but maintain minimum population)
+  if (p.life <= 0 && particles.length > CONFIG.particleCount * 0.5) {
+    particles.splice(i, 1);
+    continue;
+  }
+  
+  // Very low life particles drift to background
+  
+    if (p.life < 0.2 && p.layer === 2) {
+    p.layer = 1;
+    p.alpha *= 0.8;
+    p.lifeDecay *= 0.3;
+  }
+  
+  // Fade trail markers
+  if (p.trailHistory.length > 0) {
+    for (let t = p.trailHistory.length - 1; t >= 0; t--) {
+      const harmonicTrailDecay = 0.008 * timeScale * (1.0 - harmonicMicroAmp * 0.2);
+p.trailHistory[t].alpha -= harmonicTrailDecay;
+      if (p.trailHistory[t].alpha <= 0.005) {
+        p.trailHistory.splice(t, 1);
+      }
+    }
+  }
+}
+        
+        for (let p of particles) {
+  const flow = getFlowVector(p.x, p.y);
+  let ax = flow.x * p.baseSpeed * 0.7;
+  let ay = flow.y * p.baseSpeed * 0.7;
+  const perpX = -flow.y;
+  const perpY = flow.x;
+  const turbAmount = turb * 0.9 + eventBoost * 0.5;
+  // Breathing modulates turbulence feel
+const breathMod = 1.0 + (breathAmplitude - 0.5) * 0.12 + (harmonicMicroAmp - 0.5) * 0.06 + (harmonicSeasonalAmp - 0.5) * 0.04;
+ax += perpX * turbAmount * 0.35 * breathMod;
+ay += perpY * turbAmount * 0.35 * breathMod;
+  if (coherence > 0.55) {
+    const alignStrength = (coherence - 0.5) * 0.25;
+    ax += flow.x * alignStrength * p.baseSpeed;
+    ay += flow.y * alignStrength * p.baseSpeed;
+  }
+
+// Sacred geometry attractors
+if (geometryActive && geometryTimer < geometryDuration * 0.7) {
+  const gdx = p.x - geometryCenter.x;
+  const gdy = p.y - geometryCenter.y;
+  const gdist = Math.sqrt(gdx * gdx + gdy * gdy);
+  const gprogress = Math.min(1.0, geometryTimer / (geometryDuration * 0.5));
+  
+  let gforce = 0;
+  if (geometryType === 'spiral') {
+    const angle = Math.atan2(gdy, gdx) + gdist * 0.02;
+    gforce = gprogress * 0.3 / (gdist * 0.01 + 1.5);
+    ax += Math.cos(angle + 1.57) * gforce;
+    ay += Math.sin(angle + 1.57) * gforce;
+  } else if (geometryType === 'ring') {
+    const ringRadius = 120;
+    const ringForce = (gdist - ringRadius) * gprogress * 0.008;
+    ax -= (gdx / gdist) * ringForce;
+    ay -= (gdy / gdist) * ringForce;
+  } else if (geometryType === 'crescent') {
+    const angle = Math.atan2(gdy, gdx);
+    const crescent = Math.cos(angle * 2) * gprogress * 0.25;
+    ax -= (gdx / gdist) * crescent;
+    ay -= (gdy / gdist) * crescent;
+  }
+}
+
+// Phase-based behavior modulation
+if (currentPhase === 'coherent' && phaseTransitionProgress > 0.5) {
+  ax *= 0.85; // smoother, less chaotic
+  ay *= 0.85;
+} else if (currentPhase === 'turbulent' && phaseTransitionProgress > 0.5) {
+  const turbulenceSoften = 1.0 - harmonicMicroAmp * 0.15;
+ax *= 1.2 * turbulenceSoften;
+ay *= 1.2 * turbulenceSoften;
+}
+// 🌊 Consensus shockwave — check proximity to active pulse rings
+for (let ring of pulseRings) {
+  const rcx = w / 2 + cameraDriftX * 0.3;
+  const rcy = h / 2 + cameraDriftY * 0.3;
+  const rdist = Math.hypot(p.x - rcx, p.y - rcy);
+  const bandDist = Math.abs(rdist - ring.radius);
+  if (bandDist < ring.lineWidth * 6) {
+    const cForce = (1.0 - bandDist / (ring.lineWidth * 6)) * ring.coherenceForce * 0.2;
+    ax = ax * (1.0 - cForce * 0.4) + flow.x * p.baseSpeed * cForce * 0.4;
+    ay = ay * (1.0 - cForce * 0.4) + flow.y * p.baseSpeed * cForce * 0.4;
+    p.life = Math.min(1.0, p.life + cForce * 0.0002);
+    p.alpha = Math.min(1.0, p.alpha * (1.0 + cForce * 0.1));
+    break; // only apply strongest ring
+  }
+}
+
+
+  // 🌪 Localized disturbance zones
+  for (let node of disturbanceNodes) {
+    const dx = p.x - node.x;
+    const dy = p.y - node.y;
+    const dist = Math.sqrt(dx * dx + dy * dy) + 0.1;
+    if (dist < node.radius) {
+      const influence = (1.0 - dist / node.radius) * node.strength * smooth.turbulence;
+      const perpAngle = Math.atan2(dy, dx) + Math.PI / 2;
+      ax += Math.cos(perpAngle) * influence * 0.55;
+      ay += Math.sin(perpAngle) * influence * 0.55;
+    }
+  }
+
+  if (pulse > 0.05) {
+    const cx = w / 2 + cameraDriftX * 0.3;
+            const cy = h / 2 + cameraDriftY * 0.3;
+            const dx = p.x - cx;
+            const dy = p.y - cy;
+            const dist = Math.sqrt(dx * dx + dy * dy) + 0.1;
+            const force = pulse * 1.4 / (dist * 0.008 + 1.2);
+            ax += (dx / dist) * force * 0.7;
+            ay += (dy / dist) * force * 0.7;
+          }
+          let speedMod = 1.0;
+          if (p.layer === 0) speedMod = 0.35;
+          else if (p.layer === 2) speedMod = 1.7;
+          else if (p.layer === 3) speedMod = 0.18;
+          
+          p.vx = p.vx * 0.92 + ax * speedMod;
+          p.vy = p.vy * 0.92 + ay * speedMod;
+          const maxSpeed = 2.8 * speedMod;
+          const spd = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+          if (spd > maxSpeed) {
+            p.vx = (p.vx / spd) * maxSpeed;
+            p.vy = (p.vy / spd) * maxSpeed;
+          }
+          p.x += p.vx;
+p.y += p.vy;
+
+// Trail memory deposition
+p.trailTimer++;
+if (p.trailTimer >= 9) {
+  p.trailTimer = 0;
+  if (p.layer === 2 || p.layer === 1) {
+    p.trailHistory.push({ x: p.x, y: p.y, alpha: 0.09 + p.alpha * 0.08 });
+    if (p.trailHistory.length > 14) p.trailHistory.shift();
+  }
+}
+
+if (p.x < -30) p.x += w + 60;
+          
+          if (p.x > w + 30) p.x -= w + 60;
+          if (p.y < -30) p.y += h + 60;
+          if (p.y > h + 30) p.y -= h + 60;
+        }
+      }
+      
+// 🎯 UPDATED: Dynamic expanding rings that fade as they travel outward
+function updatePulseRings() {
+  for (let i = pulseRings.length - 1; i >= 0; i--) {
+    const ring = pulseRings[i];
+    ring.radius += ring.speed * timeScale;
+    ring.alpha -= 0.004;
+    ring.lineWidth *= 0.993;
+    if (ring.radius > ring.maxRadius || ring.alpha <= 0.01) {
+      pulseRings.splice(i, 1);
+    }
+  }
+  if (pulseCooldown > 0) pulseCooldown--;
+}
+
+function updateFossils() {
+  // Decay existing fossils
+  for (let i = fossils.length - 1; i >= 0; i--) {
+    fossils[i].life -= 0.0003 * timeScale;
+    if (fossils[i].life <= 0) {
+      fossils.splice(i, 1);
+    }
+  }
+  
+  // Capture fossils during stable periods
+  if (smooth.coherence > 0.8 && smooth.turbulence < 0.5 && 
+      fossils.length < MAX_FOSSILS && Math.random() < 0.001) {
+    
+    // Capture trail positions from a random midground particle
+    const candidates = particles.filter(p => p.layer === 1 && p.trailHistory.length > 6);
+    if (candidates.length > 0) {
+      const p = candidates[Math.floor(Math.random() * candidates.length)];
+      const trailCopy = p.trailHistory.map(t => ({ x: t.x, y: t.y }));
+      
+      if (trailCopy.length > 4) {
+        fossils.push({
+          points: trailCopy,
+          life: 0.7 + Math.random() * 0.5,
+          alpha: 0,
+          temp: smooth.colorTemp
+        });
+      }
+    }
+  }
+}
+      
+      function updateConstellations() {
+  // Remove expired
+  for (let i = constellations.length - 1; i >= 0; i--) {
+    constellations[i].life -= 0.0008 * timeScale;
+    if (constellations[i].life <= 0) {
+      constellations.splice(i, 1);
+    }
+  }
+  
+  // Spawn new ones during high coherence
+  if (smooth.coherence > 0.82 && smooth.turbulence < 0.75 && 
+      constellations.length < MAX_CONSTELLATIONS && Math.random() < 0.004) {
+    
+    // Pick two distant particles with similar flow
+    const candidates = particles.filter(p => p.layer === 1 || p.layer === 2);
+    if (candidates.length > 20) {
+      const p1 = candidates[Math.floor(Math.random() * candidates.length)];
+      // Keep within visible area (with margin)
+const margin = 60;
+p1.x = Math.max(margin, Math.min(window.innerWidth - margin, p1.x));
+p1.y = Math.max(margin, Math.min(window.innerHeight - margin, p1.y));
+      let p2;
+      let attempts = 0;
+      do {
+        p2 = candidates[Math.floor(Math.random() * candidates.length)];
+        p2.x = Math.max(margin, Math.min(window.innerWidth - margin, p2.x));
+p2.y = Math.max(margin, Math.min(window.innerHeight - margin, p2.y));
+        attempts++;
+      } while (attempts < 30 && 
+        (Math.hypot(p1.x - p2.x, p1.y - p2.y) < 180 ||
+         Math.abs(Math.atan2(p1.vy, p1.vx) - Math.atan2(p2.vy, p2.vx)) > 0.8));
+      
+      if (Math.hypot(p1.x - p2.x, p1.y - p2.y) >= 180) {
+        constellations.push({
+          x1: p1.x, y1: p1.y,
+          x2: p2.x, y2: p2.y,
+          life: 0.4 + Math.random() * 0.6,
+          pulseOffset: Math.random() * Math.PI * 2,
+          alpha: 0
+        });
+      }
+    }
+  }
+}
+
+function decayCoherenceField() {
+  // Simple global decay
+  for (let i = 0; i < coherenceField.length; i++) {
+    coherenceField[i].value = Math.max(0, coherenceField[i].value - 0.004);
+  }
+}
+
+      
+      function updateDisturbanceNodes() {
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  const turb = smooth.turbulence;
+  
+  // Adjust node count based on turbulence
+  const targetCount = turb > 1.4 ? MAX_DISTURBANCE_NODES : 
+                      turb > 0.8 ? 2 : 1;
+  
+  while (disturbanceNodes.length < targetCount) {
+    disturbanceNodes.push({
+      x: Math.random() * w,
+      y: Math.random() * h,
+      vx: (Math.random() - 0.5) * 0.3,
+      vy: (Math.random() - 0.5) * 0.3,
+      radius: 60 + Math.random() * 150,
+      strength: 0.4 + Math.random() * 0.6,
+      phase: Math.random() * Math.PI * 2,
+      pulseSpeed: 0.004 + Math.random() * 0.007
+    });
+  }
+  while (disturbanceNodes.length > targetCount) {
+    disturbanceNodes.pop();
+  }
+  
+  // Move nodes
+  for (let node of disturbanceNodes) {
+    node.x += node.vx;
+    node.y += node.vy;
+    node.strength += Math.sin(globalTime * node.pulseSpeed + node.phase) * 0.006;
+    node.strength = Math.max(0.2, Math.min(1.3, node.strength));
+    
+    // Wrap around
+    if (node.x < -node.radius) node.x += w + node.radius * 2;
+    if (node.x > w + node.radius) node.x -= w + node.radius * 2;
+    if (node.y < -node.radius) node.y += h + node.radius * 2;
+    if (node.y > h + node.radius) node.y -= h + node.radius * 2;
+  }
+}
+      
+      function drawBackgroundFade() {
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        ctx.fillStyle = `rgba(0, 0, 0, ${CONFIG.fadeAlpha})`;
+        ctx.fillRect(0, 0, w, h);
+        ctx.fillStyle = `rgba(0, 0, 0, ${CONFIG.backgroundFadeAlpha * 0.7})`;
+        ctx.fillRect(0, 0, w, h);
+      }
+      
+      
+      
+      function drawAtmosphericHaze() {
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  const cx = w / 2 + cameraDriftX * 0.08;
+  const cy = h / 2 + cameraDriftY * 0.08;
+  
+  const gradient = ctx.createRadialGradient(cx, cy, h * 0.15, cx, cy, h * 0.85);
+  gradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
+  gradient.addColorStop(0.6, 'rgba(0, 0, 0, 0)');
+gradient.addColorStop(0.9, 'rgba(0, 5, 8, 0.04)');
+  const hazeAlpha = 0.10 + breathAmplitude * 0.05 + harmonicMicroAmp * 0.03 + harmonicSeasonalAmp * 0.02;
+gradient.addColorStop(1, `rgba(0, 10, 15, ${hazeAlpha})`);
+  
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, w, h);
+}
+      
+      function drawTrails() {
+  for (let p of particles) {
+    if (p.trailHistory.length < 2) continue;
+    if (p.layer === 3 || p.layer === 0) continue;
+    
+    for (let t = 0; t < p.trailHistory.length; t++) {
+      const marker = p.trailHistory[t];
+      if (marker.alpha < 0.006) continue;
+      
+      ctx.beginPath();
+      ctx.arc(marker.x, marker.y, 0.7, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(100, 200, 180, ${marker.alpha})`;
+      ctx.fill();
+    }
+  }
+}
+
+function drawParticlesLayer(targetLayer) {
+  const cachedTempColor = getTemperatureColor(smooth.colorTemp);
+const [cachedR, cachedG, cachedB] = cachedTempColor;
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  const coherence = smooth.coherence;
+  const turb = smooth.turbulence;
+  
+  for (let p of particles) {
+    if (p.layer !== targetLayer) continue;
+    
+    let r, g, b, alpha;
+    const temp = smooth.colorTemp;
+    const [tempR, tempG, tempB] = [cachedR, cachedG, cachedB];
+    
+    if (p.layer === 3) {
+      const mix = temp * 0.6;
+      r = (20 + Math.sin(p.phase + globalTime * 0.2) * 8) * (1 - mix) + tempR * mix;
+      g = (100 + Math.cos(p.phase * 0.7) * 30) * (1 - mix) + tempG * mix;
+      b = (90 + Math.sin(p.phase * 0.5) * 25) * (1 - mix) + tempB * mix;
+      alpha = p.alpha * (0.5 + coherence * 0.5);
+    } else if (p.layer === 0) {
+      const mix = temp * 0.8;
+      const baseR = 5 + turb * 3;
+      const baseG = 55 + Math.sin(p.phase) * 20;
+      const baseB = 50 + Math.cos(p.phase) * 22;
+      r = baseR * (1 - mix) + tempR * mix;
+      g = baseG * (1 - mix) + tempG * mix;
+      b = baseB * (1 - mix) + tempB * mix;
+      alpha = p.alpha * 0.8;
+    } else if (p.layer === 2) {
+      const mix = temp * 0.55;
+      const baseR = 160 * p.colorMix + 220 * (1 - p.colorMix) + Math.sin(globalTime * 0.5 + p.phase) * 25;
+      const baseG = 200 * p.colorMix + 235 * (1 - p.colorMix) + Math.cos(globalTime * 0.4) * 20;
+      const baseB = 180 * p.colorMix + 225 * (1 - p.colorMix) + 25;
+      r = baseR * (1 - mix) + tempR * mix;
+      g = baseG * (1 - mix) + tempG * mix;
+      b = baseB * (1 - mix) + tempB * mix;
+      alpha = p.alpha * (0.7 + coherence * 0.3);
+      if (p.colorMix > 0.8) {
+        const goldMix = temp * 0.7;
+        r = (185 + Math.sin(globalTime * 0.3) * 20) * (1 - goldMix) + 195 * goldMix;
+        g = (155 + Math.cos(globalTime * 0.25) * 18) * (1 - goldMix) + 125 * goldMix;
+        b = 70 * (1 - goldMix) + 55 * goldMix;
+      }
+    } else {
+      const mix = temp * 0.65;
+      const baseR = 15 + Math.sin(p.phase) * 18;
+      const baseG = 140 + Math.cos(p.phase * 0.8) * 35;
+      const baseB = 135 + Math.sin(p.phase * 0.7) * 30;
+      r = baseR * (1 - mix) + tempR * mix;
+      g = baseG * (1 - mix) + tempG * mix;
+      b = baseB * (1 - mix) + tempB * mix;
+      alpha = p.alpha * (0.75 + coherence * 0.25);
+    }
+    
+    alpha *= (1.0 - turb * 0.25);
+    // Silence dimming
+if (silenceActive) {
+  const silenceFade = silencePhase < 0.3 ? silencePhase / 0.3 : 
+                       silencePhase > 0.7 ? (1.0 - silencePhase) / 0.3 : 1.0;
+  alpha *= (1.0 - silenceFade * 0.45);
+  if (silenceFade > 0.85 && p.layer === 1) alpha *= 0.55; // midground nearly vanishes
+  // Post-silence recovery warmth
+if (silenceRecoveryGlow > 0.01) {
+  alpha = Math.min(1.0, alpha * (1.0 + silenceRecoveryGlow * 0.3));
+  r = Math.min(255, r + Math.floor(silenceRecoveryGlow * 20));
+  g = Math.min(255, g + Math.floor(silenceRecoveryGlow * 15));
+}
+}
+    alpha *= (1.0 + (p.zOffset || 0) * 0.25);
+    
+    if (p.life < 0.3) alpha *= (p.life / 0.3);
+    
+    if (p.birthProtected && p.birthTimer > 20) {
+      const birthGlow = Math.min(1.0, p.birthTimer / 100);
+      alpha = Math.min(1.0, alpha * (1.0 + birthGlow * 0.5));
+      r = Math.min(255, r + Math.floor(birthGlow * 40));
+      g = Math.min(255, g + Math.floor(birthGlow * 40));
+      b = Math.min(255, b + Math.floor(birthGlow * 35));
+    }
+    
+    if (p.isDying && p.life < 0.5) {
+      const deathProgress = 1.0 - (p.life / 0.5);
+      r = Math.min(255, r + Math.floor(deathProgress * 60));
+      g = Math.max(0, g - Math.floor(deathProgress * 40));
+      b = Math.max(0, b - Math.floor(deathProgress * 50));
+    }
+    
+    if (eventActive && eventType === 'bloom') {
+      alpha = Math.min(1.0, alpha * 1.7);
+      g = Math.min(255, g + 30);
+    } else if (eventActive && eventType === 'fracture') {
+      alpha *= 0.65;
+      r += 30;
+    }
+    
+    const zScale = 1.0 + (p.zOffset || 0) * 0.35;
+    const size = p.size * (0.9 + coherence * 0.2) * zScale;
+    const angle = Math.atan2(p.vy, p.vx);
+    
+    // --- SHAPE RENDERING (same as before) ---
+    if (p.layer === 3) {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, size, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(${Math.floor(r)}, ${Math.floor(g)}, ${Math.floor(b)}, ${alpha * 0.5})`;
+      ctx.lineWidth = 0.6;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, size * 0.15, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${Math.floor(r)}, ${Math.floor(g)}, ${Math.floor(b)}, ${alpha * 0.35})`;
+      ctx.fill();
+    } else if (p.layer === 2) {
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(angle);
+      const len = size * 1.8;
+      const wid = size * 0.7;
+      ctx.beginPath();
+      ctx.moveTo(len, 0);
+      ctx.bezierCurveTo(len * 0.3, -wid, -len * 0.6, -wid * 0.8, -len * 0.5, 0);
+      ctx.bezierCurveTo(-len * 0.6, wid * 0.8, len * 0.3, wid, len, 0);
+      ctx.closePath();
+      ctx.shadowColor = `rgba(${Math.floor(r)}, ${Math.floor(g)}, ${Math.floor(b)}, ${alpha})`;
+      ctx.shadowBlur = size * 1.5;
+      ctx.fillStyle = `rgba(${Math.floor(r)}, ${Math.floor(g)}, ${Math.floor(b)}, ${alpha})`;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.beginPath();
+      ctx.arc(len * 0.35, 0, size * 0.2, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(220, 240, 235, ${alpha * 0.85})`;
+      ctx.fill();
+      ctx.restore();
+    } else if (p.layer === 1) {
+      const gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, size);
+      gradient.addColorStop(0, `rgba(${Math.floor(r)}, ${Math.floor(g)}, ${Math.floor(b)}, ${alpha})`);
+      gradient.addColorStop(0.5, `rgba(${Math.floor(r*0.7)}, ${Math.floor(g*0.7)}, ${Math.floor(b*0.7)}, ${alpha * 0.5})`);
+      gradient.addColorStop(1, `rgba(${Math.floor(r*0.3)}, ${Math.floor(g*0.3)}, ${Math.floor(b*0.3)}, 0)`);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, size, 0, Math.PI * 2);
+      ctx.fillStyle = gradient;
+      ctx.fill();
+    } else {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, size * 0.6, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${Math.floor(r)}, ${Math.floor(g)}, ${Math.floor(b)}, ${alpha * 0.55})`;
+      ctx.shadowColor = `rgba(${Math.floor(r)}, ${Math.floor(g)}, ${Math.floor(b)}, ${alpha * 0.3})`;
+      ctx.shadowBlur = size;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+  }
+}
+
+function drawFossils() {
+  for (let f of fossils) {
+    const fade = f.life < 0.2 ? f.life / 0.2 : 1.0;
+    f.alpha += (fade * 0.1 - f.alpha) * 0.03;
+    
+    if (f.alpha < 0.02 || f.points.length < 2) continue;
+    
+    const [fr, fg, fb] = getTemperatureColor(f.temp);
+    
+    // Draw as faint connected line segments
+    ctx.beginPath();
+    ctx.moveTo(f.points[0].x, f.points[0].y);
+    for (let i = 1; i < f.points.length; i++) {
+      ctx.lineTo(f.points[i].x, f.points[i].y);
+    }
+    const fossilGlow = smooth.coherence * 0.06 + harmonicSeasonalAmp * 0.04 + harmonicMicroAmp * 0.02;
+ctx.strokeStyle = `rgba(${fr}, ${fg}, ${fb}, ${f.alpha * 0.18 + fossilGlow})`;
+    
+    ctx.lineWidth = 0.7;
+    ctx.stroke();
+    // Check if any active vein is near this fossil
+if (smooth.coherence > 0.7 && Math.random() < 0.02) {
+  f.alpha = Math.min(0.4, f.alpha + 0.08); // brief awakening pulse
+}
+    // Dust fragments at each point
+    for (let pt of f.points) {
+      if (Math.random() < 0.3) {
+        ctx.beginPath();
+        ctx.arc(pt.x + (Math.random()-0.5)*3, pt.y + (Math.random()-0.5)*3, 0.4, 0, Math.PI*2);
+        ctx.fillStyle = `rgba(${fr}, ${fg}, ${fb}, ${f.alpha * 0.12})`;
+        ctx.fill();
+      }
+    }
+  }
+}
+function drawConstellations() {
+  for (let c of constellations) {
+    const fade = c.life < 0.15 ? c.life / 0.15 : c.life > 0.7 ? (1.0 - c.life) / 0.3 : 1.0;
+    c.alpha += (fade * 0.06 - c.alpha) * 0.05;
+    
+    if (c.alpha < 0.01) continue;
+    
+    const shimmer = 1.0 + Math.sin(globalTime * 3.5 + c.pulseOffset) * 0.2 + harmonicMicroAmp * 0.1 + harmonicSeasonalAmp * 0.08;
+    const constBoost = 1.0 + smooth.coherence * 1.2;
+    const alpha = c.alpha * shimmer * 0.07 * constBoost;
+    
+    // Curved filament using quadratic bezier
+    const mx = (c.x1 + c.x2) / 2;
+    const my = (c.y1 + c.y2) / 2;
+    const curveDepth = 0.1 + Math.random() * 0.4; // varies per constellation
+const perpX = -(c.y2 - c.y1) * curveDepth;
+const perpY = (c.x2 - c.x1) * curveDepth;
+    const cpx = mx + perpX;
+    const cpy = my + perpY;
+    
+    ctx.beginPath();
+    ctx.moveTo(c.x1, c.y1);
+    ctx.quadraticCurveTo(cpx, cpy, c.x2, c.y2);
+    ctx.strokeStyle = `rgba(130, 210, 190, ${alpha})`;
+    ctx.lineWidth = 0.4;
+    ctx.stroke();
+    
+    // Soft pulse traveling along the curve
+    const pulsePos = ((globalTime * 0.6 + c.pulseOffset) % 1.5) / 1.5;
+    const px = (1 - pulsePos) * (1 - pulsePos) * c.x1 + 2 * (1 - pulsePos) * pulsePos * cpx + pulsePos * pulsePos * c.x2;
+    const py = (1 - pulsePos) * (1 - pulsePos) * c.y1 + 2 * (1 - pulsePos) * pulsePos * cpy + pulsePos * pulsePos * c.y2;
+    
+    ctx.beginPath();
+    ctx.arc(px, py, 1.4, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(160, 225, 200, ${alpha * 1.5})`;
+    ctx.fill();
+  }
+}
+
+      
+      function drawVeins() {
+        const coherence = smooth.coherence;if (coherence < 0.55 || silenceActive || 
+    (currentPhase === 'turbulent' && phaseTransitionProgress > 0.6)) return;
+
+// Cache vein color once per frame
+const [veinR, veinG, veinB] = getTemperatureColor(smooth.colorTemp);
+const veinColorMix = smooth.colorTemp * 0.7;
+const vr = Math.floor(60 * (1 - veinColorMix) + veinR * veinColorMix);
+const vg = Math.floor(175 * (1 - veinColorMix) + veinG * veinColorMix);
+const vb = Math.floor(155 * (1 - veinColorMix) + veinB * veinColorMix);
+    
+    const maxDist = 42 * (1.0 + coherence);
+        
+const veinAlpha = (coherence - 0.5) * 0.25;
+        const sampleSize = Math.min(particles.length, 200);
+        const step = Math.max(1, Math.floor(particles.length / sampleSize));
+        
+        for (let i = 0; i < particles.length; i += step) {
+          const p1 = particles[i];
+          if (p1.layer === 3) continue;
+          for (let j = i + 1; j < particles.length; j += step) {
+            const p2 = particles[j];
+            if (p2.layer === 3) continue;
+            const dx = p1.x - p2.x;
+            const dy = p1.y - p2.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            // Shockwave boosts vein brightness — simple coherence check
+let veinBoost = 1.0 + smooth.coherence * 0.3;
+
+            if (dist < maxDist && dist > 1.2) {
+              const alphaFactor = (1.0 - dist / maxDist) * veinAlpha * 0.7 * veinBoost;
+              if (alphaFactor > 0.008) {
+                ctx.beginPath();
+                ctx.moveTo(p1.x, p1.y);
+                ctx.lineTo(p2.x, p2.y);
+                ctx.strokeStyle = `rgba(${vr}, ${vg}, ${vb}, ${alphaFactor})`;
+                ctx.stroke();
+              }
+            }
+          }
+        }
+      }
+      function drawPulseRings() {
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  const cx = w / 2 + cameraDriftX * 0.3;
+  const cy = h / 2 + cameraDriftY * 0.3;
+  
+  for (let ring of pulseRings) {
+    if (ring.alpha <= 0.02 || ring.radius > ring.maxRadius) continue;
+
+// Ghost rings are fainter and slightly offset
+const ghostOffset = ring.isGhost ? 6 : 0;
+const ghostAlpha = ring.isGhost ? ring.alpha * 0.5 : ring.alpha;
+   
+    // Outer glow
+ctx.beginPath();
+ctx.arc(cx, cy, ring.radius - ghostOffset, 0, Math.PI * 2);
+const [ringR, ringG, ringB] = getTemperatureColor(smooth.colorTemp);
+ctx.strokeStyle = `rgba(${Math.floor(80 * (1-smooth.colorTemp) + ringR * smooth.colorTemp)}, ${Math.floor(200 * (1-smooth.colorTemp) + ringG * smooth.colorTemp)}, ${Math.floor(175 * (1-smooth.colorTemp) + ringB * smooth.colorTemp)}, ${ghostAlpha * 0.5})`;
+ctx.lineWidth = ring.lineWidth * 2.4;
+ctx.stroke();
+
+    // Core ring
+ctx.beginPath();
+ctx.arc(cx, cy, ring.radius - ghostOffset, 0, Math.PI * 2);
+ctx.strokeStyle = `rgba(${Math.floor(140 * (1-smooth.colorTemp*0.6) + ringR * smooth.colorTemp*0.6)}, ${Math.floor(225 * (1-smooth.colorTemp*0.6) + ringG * smooth.colorTemp*0.6)}, ${Math.floor(200 * (1-smooth.colorTemp*0.6) + ringB * smooth.colorTemp*0.6)}, ${ghostAlpha})`;
+ctx.lineWidth = ring.lineWidth;
+ctx.stroke();
+
+    // Inner crisp edge
+ctx.beginPath();
+ctx.arc(cx, cy, ring.radius - ghostOffset, 0, Math.PI * 2);
+ctx.strokeStyle = `rgba(${Math.floor(200 * (1-smooth.colorTemp*0.4) + ringR * smooth.colorTemp*0.4)}, ${Math.floor(240 * (1-smooth.colorTemp*0.4) + ringG * smooth.colorTemp*0.4)}, ${Math.floor(225 * (1-smooth.colorTemp*0.4) + ringB * smooth.colorTemp*0.4)}, ${ghostAlpha * 0.8})`;
+ctx.lineWidth = ring.lineWidth * 0.5;
+ctx.stroke();
+
+  }
+}
+
+
+
+
+      
+      function drawWhisper() {
+  if (whisperAlpha < 0.01 || !whisperText || silenceActive) return;
+  
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  
+  ctx.save();
+  ctx.font = `italic ${w < 600 ? 13 : 16}px 'Segoe UI', 'Inter', system-ui, serif`;
+  ctx.textAlign = 'center';
+  ctx.fillStyle = `rgba(180, 210, 200, ${whisperAlpha})`;
+  ctx.shadowColor = `rgba(140, 200, 180, ${whisperAlpha * 0.6})`;
+  ctx.shadowBlur = 18;
+  ctx.fillText(whisperText, w / 2, h - 50);
+  ctx.restore();
+}
+      
+      // Color temperature interpolator
+function getTemperatureColor(temp) {
+  // temp ranges from 0 (cool/calm) to 1 (hot/distressed)
+  // Returns [r, g, b] blended between palettes
+  
+  const cool = { r: 15, g: 145, b: 130 };    // serene teal
+  const warm = { r: 160, g: 120, b: 50 };     // amber/copper
+  const hot = { r: 195, g: 80, b: 65 };       // coral/rose
+  
+  let r, g, b;
+  
+  if (temp < 0.5) {
+    // Blend cool → warm
+    const t = temp * 2;
+    r = cool.r + (warm.r - cool.r) * t;
+    g = cool.g + (warm.g - cool.g) * t;
+    b = cool.b + (warm.b - cool.b) * t;
+  } else {
+    // Blend warm → hot
+    const t = (temp - 0.5) * 2;
+    r = warm.r + (hot.r - warm.r) * t;
+    g = warm.g + (hot.g - warm.g) * t;
+    b = warm.b + (hot.b - warm.b) * t;
+  }
+  
+  return [Math.floor(r), Math.floor(g), Math.floor(b)];
+}
+      
+      function updateSmoothValues() {
+  const lerpSpeed = 0.08;
+  const targetTurb = Math.min(2.2, (data.blueScoreDiff * CONFIG.blueScoreDiffSensitivity) * 0.7 + 0.5);
+  smooth.turbulence += (targetTurb - smooth.turbulence) * lerpSpeed;
+  const targetCoherence = data.isSynced ? 1.0 : 0.25;
+  smooth.coherence += (targetCoherence - smooth.coherence) * lerpSpeed * 1.2;
+  const rawPulse = Math.min(1.0, Math.abs(data.acceptedTxBlockTimeDiff) * 0.12);
+  smooth.pulseEnergy += (rawPulse - smooth.pulseEnergy) * lerpSpeed * 0.9;
+  smooth.blueScoreDiff = data.blueScoreDiff;
+  // Time dilation: turbulence slows time, coherence speeds it
+targetTimeScale = 0.85 + (1.0 - smooth.turbulence * 0.15) * 0.3;
+timeScale += (targetTimeScale - timeScale) * 0.02;
+  
+  // Color temperature from blueScoreDiff (0=cool, 1=hot)
+  const targetTemp = Math.min(1.0, data.blueScoreDiff / 25.0);
+  smooth.colorTemp += (targetTemp - smooth.colorTemp) * 0.06;
+  
+  // Recovery bloom detection: unsynced → synced transition
+  if (smooth.wasUnsynced && data.isSynced && smooth.coherence > 0.7) {
+    spawnRecoveryBloom();
+    // Spawn ethereal dust motes
+if (silenceRecoveryGlow > 0.3 || (smooth.wasUnsynced === false && smooth.coherence > 0.7)) {
+  spawnDustMotes(8);
+}
+    smooth.wasUnsynced = false;
+  }
+  if (!data.isSynced) {
+    smooth.wasUnsynced = true;
+  }
+  
+  // Mark particles for death when turbulence spikes
+  if (smooth.turbulence > 1.4 && Math.random() < 0.03) {
+    const deathCount = Math.floor(particles.length * 0.015);
+    markParticlesForDeath(deathCount);
+  }
+    // Seasonal long-term drift from blueScore progression
+const epochSize = 50000; // shift every ~50k blocks
+const currentEpoch = Math.floor(data.blueScore / epochSize);
+if (currentEpoch !== smooth.lastBlueScoreEpoch && smooth.lastBlueScoreEpoch !== 0) {
+  // New epoch: gentle seasonal shift
+  smooth.seasonalPhase += 0.12 + Math.random() * 0.18;
+  smooth.seasonalPaletteShift = Math.sin(smooth.seasonalPhase) * 0.5 + 0.5;
+}
+smooth.lastBlueScoreEpoch = currentEpoch;
+
+// Phase transition detection
+let newPhase = 'normal';
+if (silenceActive) {
+  newPhase = 'silence';
+} else if (smooth.wasUnsynced && data.isSynced && smooth.coherence > 0.7 && phaseTimer < 5) {
+  newPhase = 'recovery';
+  phaseTimer = 0;
+} else if (smooth.coherence > 0.85 && smooth.turbulence < 0.5) {
+  newPhase = 'coherent';
+} else if (smooth.turbulence > 1.4) {
+  newPhase = 'turbulent';
+}
+
+if (newPhase !== currentPhase) {
+  currentPhase = newPhase;
+  phaseTransitionProgress = 0;
+  phaseTimer = 0;
+} else {
+  phaseTimer++;
+  phaseTransitionProgress = Math.min(1.0, phaseTransitionProgress + 0.015);
+}
+  
+}  // ← FUNCTION CLOSES HERE
+
+function checkSilenceEvent() {
+  if (silenceActive) return;
+  
+  // Track time since last high turbulence
+  if (smooth.turbulence > 1.5) {
+    postTurbulenceCounter = 0;
+  } else {
+    postTurbulenceCounter++;
+  }
+  
+  // Trigger silence after prolonged turbulence recovery
+  if (postTurbulenceCounter > 600 && Math.random() < 0.0003 && smooth.coherence > 0.7) {
+    silenceActive = true;
+    silencePhase = 0;
+    silenceTimer = 0;
+    silenceDuration = 120 + Math.random() * 180; // ~2-5 seconds at 60fps
+    postTurbulenceCounter = 0;
+  }
+}
+
+function checkGeometryEmergence() {
+  if (geometryActive) return;
+  if (silenceActive) return;
+  
+  // Only during extreme coherence
+  if (smooth.coherence > 0.9 && smooth.turbulence < 0.35 && Math.random() < 0.0006) {
+    geometryActive = true;
+    geometryTimer = 0;
+    geometryDuration = 90 + Math.random() * 140; // 3-8 seconds
+    const types = ['spiral', 'ring', 'crescent'];
+    geometryType = types[Math.floor(Math.random() * types.length)];
+    geometryCenter = {
+      x: window.innerWidth * 0.3 + Math.random() * window.innerWidth * 0.4,
+      y: window.innerHeight * 0.3 + Math.random() * window.innerHeight * 0.4
+    };
+  }
+}
+
+function maybeTriggerEvent() {
+
+        if (eventActive) return;
+        if (Math.random() < CONFIG.eventChance) {
+          eventActive = true;
+          eventTimer = CONFIG.eventDuration;
+          const r = Math.random();
+          if (r < 0.45) eventType = 'bloom';
+          else if (r < 0.8) eventType = 'storm';
+          else eventType = 'fracture';
+          eventIntensity = 0;
+        }
+      }
+      
+      function updateWhispers() {
+  if (whisperAlpha > 0.01) {
+    whisperAlpha *= 0.985; // slow fade
+    if (whisperAlpha < 0.01) whisperAlpha = 0;
+  }
+  
+  whisperTimer--;
+  if (whisperTimer <= 0 && whisperAlpha < 0.02) {
+    // Choose word pool based on network state
+    let pool;
+    if (smooth.coherence > 0.85 && smooth.turbulence < 0.6) {
+      pool = CONFIG.whispers.calm;
+    } else if (smooth.turbulence > 1.3) {
+      pool = CONFIG.whispers.tension;
+    } else if (smooth.turbulence > 0.8) {
+      pool = CONFIG.whispers.alert;
+    } else {
+      pool = CONFIG.whispers.recovery;
+    }
+    
+    // Occasionally use a two-word phrase 
+    if (Math.random() < 0.25) {   whisperText = CONFIG.whispers.phrases[Math.floor(Math.random() * CONFIG.whispers.phrases.length)]; } else {   whisperText = pool[Math.floor(Math.random() * pool.length)]; }
+    whisperAlpha = (0.16 + Math.random() * 0.08) * (0.8 + harmonicMicroAmp * 0.4);
+    whisperNextDelay = 280 + Math.random() * 500;
+    whisperTimer = whisperNextDelay;
+  }
+}
+      function animate(timestamp) {
+  requestAnimationFrame(animate);
+  if (lastFrameTime) {
+    const delta = timestamp - lastFrameTime;
+    fps = 1000 / delta;
+  }
+  lastFrameTime = timestamp;
+  globalTime += 0.016 * timeScale;
+flowFieldTime += 0.016 * timeScale;
+  // Master breathing cycle
+breathPhase += 0.016 / BREATH_CYCLE;
+if (breathPhase > 1.0) breathPhase -= 1.0;
+breathAmplitude = Math.sin(breathPhase * Math.PI * 2) * 0.5 + 0.5;
+// Decay silence recovery glow
+if (silenceRecoveryGlow > 0.001) {
+  silenceRecoveryGlow *= 0.985;
+} else {
+  silenceRecoveryGlow = 0;
+}
+// Emotional harmonics
+harmonicPhase2 += 0.016 / HARMONIC_MICRO_CYCLE;
+if (harmonicPhase2 > 1.0) harmonicPhase2 -= 1.0;
+harmonicPhase3 += 0.016 / HARMONIC_SEASONAL_CYCLE;
+if (harmonicPhase3 > 1.0) harmonicPhase3 -= 1.0;
+harmonicMicroAmp = Math.sin(harmonicPhase2 * Math.PI * 2) * 0.5 + 0.5;
+harmonicSeasonalAmp = Math.sin(harmonicPhase3 * Math.PI * 2) * 0.5 + 0.5;
+  
+  // Seasonal drift offset for camera
+  const seasonalOffsetX = Math.sin(smooth.seasonalPhase * 0.7) * 40;
+  const seasonalOffsetY = Math.cos(smooth.seasonalPhase * 0.6) * 35;
+  targetDriftX = Math.sin(globalTime * 0.13) * 22 + Math.cos(globalTime * 0.17) * 14 + seasonalOffsetX;
+  targetDriftY = Math.cos(globalTime * 0.15) * 18 + Math.sin(globalTime * 0.19) * 12 + seasonalOffsetY;
+  const harmonicCameraSpeed = 0.015 + harmonicSeasonalAmp * 0.006;
+cameraDriftX += (targetDriftX - cameraDriftX) * harmonicCameraSpeed;
+cameraDriftY += (targetDriftY - cameraDriftY) * harmonicCameraSpeed;
+  
+  updateSmoothValues();
+  maybeTriggerEvent();
+  checkSilenceEvent();
+  checkGeometryEmergence();
+  updatePulseRings();
+  decayCoherenceField();
+  // Update silence event
+if (silenceActive) {
+  silenceTimer++;
+  silencePhase = Math.min(1.0, silenceTimer / silenceDuration);
+  if (silenceTimer >= silenceDuration) {
+  silenceActive = false;
+  silencePhase = 0;
+  silenceRecoveryGlow = 1.0; // start recovery fade
+}
+}
+  updateDisturbanceNodes();   // 🌪 NEW
+  updateConstellations();
+  // Update geometry
+if (geometryActive) {
+  geometryTimer++;
+  if (geometryTimer >= geometryDuration) {
+    geometryActive = false;
+  }
+}
+  updateFossils();
+  updateWhispers();            // 📜 NEW
+  
+  computeFlowField(flowFieldTime + smooth.blueScoreDiff * 0.0002);
+  updateParticles();
+  
+  // Maintain minimum particle population
+  const minParticles = Math.floor(CONFIG.particleCount * 0.55);
+  if (particles.length < minParticles) {
+    const deficit = minParticles - particles.length;
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    for (let i = 0; i < deficit; i++) {
+      particles.push({
+        x: Math.random() * w,
+        y: Math.random() * h,
+        vx: (Math.random() - 0.5) * 0.5,
+        vy: (Math.random() - 0.5) * 0.5,
+        baseSpeed: 0.3 + Math.random() * 0.7,
+        layer: Math.random() < 0.5 ? 0 : 1,
+        size: 0.6 + Math.random() * 1.4,
+        alpha: 0.2 + Math.random() * 0.25,
+        colorMix: Math.random(),
+        phase: Math.random() * Math.PI * 2,
+        trailWeight: 0.7 + Math.random() * 0.3,
+        coherenceDesire: 0.3 + Math.random() * 0.5,
+        neighborAlign: 0,
+        life: 0.5 + Math.random() * 0.5,
+        lifeDecay: 0.0001 + Math.random() * 0.0003,
+        isDying: false,
+        birthProtected: true,
+        birthTimer: 40 + Math.random() * 50,
+trailHistory: [],
+trailTimer: 0,
+zOffset: Math.random() * 0.6 - 0.3
+      });
+    }
+  }
+  drawBackgroundFade();
+drawAtmosphericHaze();
+
+
+// Deep background (layer 3 + layer 0) — very little parallax
+ctx.save();
+ctx.translate(cameraDriftX * 0.04, cameraDriftY * 0.04);
+drawParticlesLayer(3);
+drawParticlesLayer(0);
+ctx.restore();
+
+// Midground (layer 1 + veins + trails) — moderate parallax
+ctx.save();
+ctx.translate(cameraDriftX * 0.12, cameraDriftY * 0.12);
+drawVeins();
+drawConstellations();
+drawTrails();
+drawFossils();
+drawParticlesLayer(1);
+ctx.restore();
+
+// Foreground (layer 2 + pulse rings + whispers) — most parallax
+ctx.save();
+ctx.translate(cameraDriftX * 0.22, cameraDriftY * 0.22);
+drawParticlesLayer(2);
+drawPulseRings();
+drawWhisper();
+ctx.restore();
+
+}
+      
+  
+
+// Guide panel toggle
+const guideButton = document.getElementById('guideButton');
+const guidePanel = document.getElementById('guidePanel');
+const guideContent = document.getElementById('guideContent');
+
+guideButton.addEventListener('click', (e) => {
+  e.stopPropagation();
+  guideVisible = !guideVisible;
+  if (guideVisible) {
+    guidePanel.classList.add('open');
+    guideButton.textContent = '×';
+    guideTargetAlpha = 1;
+  } else {
+    guidePanel.classList.remove('open');
+    guideButton.textContent = '◈';
+    guideTargetAlpha = 0;
+  }
+});
+
+// Close guide when tapping on canvas
+canvas.addEventListener('click', () => {
+  if (guideVisible) {
+    guideVisible = false;
+    guidePanel.classList.remove('open');
+    guideButton.textContent = '◈';
+    guideTargetAlpha = 0;
+  }
+});
+
+// Close guide with touch on canvas (but not when interacting with particles)
+canvas.addEventListener('touchstart', (e) => {
+  if (guideVisible && !touchActive) {
+    guideVisible = false;
+    guidePanel.classList.remove('open');
+    guideButton.textContent = '◈';
+    guideTargetAlpha = 0;
+  }
+}, { passive: true });
+
+// Scroll handling for guide panel
+guidePanel.addEventListener('touchstart', (e) => {
+  guideTouchStartY = e.touches[0].clientY;
+  guideTouching = true;
+}, { passive: true });
+
+guidePanel.addEventListener('touchmove', (e) => {
+  if (guideTouching) {
+    e.stopPropagation();
+  }
+}, { passive: true });
+
+guidePanel.addEventListener('touchend', () => {
+  guideTouching = false;
+});
+      async function init() {
+        resizeCanvas();
+        window.addEventListener('resize', () => resizeCanvas());
+        await fetchHealth();
+        smooth.turbulence = Math.min(2.2, data.blueScoreDiff * CONFIG.blueScoreDiffSensitivity * 0.7 + 0.5);
+        smooth.coherence = data.isSynced ? 1.0 : 0.25;
+        smooth.pulseEnergy = Math.min(1.0, Math.abs(data.acceptedTxBlockTimeDiff) * 0.12);
+        lastTimeDiff = data.acceptedTxBlockTimeDiff;
+        requestAnimationFrame(animate);
+        setInterval(fetchHealth, 8200);
+      }
+      
+      init().catch(err => {
+        // Failed to initialize — fallback will attempt recovery
+        resizeCanvas();
+        requestAnimationFrame(animate);
+        setInterval(fetchHealth, 8200);
+      });
+    })();
+  </script>
+</body>
+</html>
